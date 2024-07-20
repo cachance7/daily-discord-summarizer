@@ -22,7 +22,7 @@ use axum::extract::Query;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
-struct SummariesQueryParams {
+pub struct SummariesQueryParams {
     count: usize, // Number of summaries to fetch
     page: usize,  // Page number for pagination
 }

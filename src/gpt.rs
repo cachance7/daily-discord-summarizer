@@ -28,11 +28,11 @@ pub async fn summarize(text: &str) -> eyre::Result<String> {
         .post("https://api.openai.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&json!({
-            "model": "gpt-4",
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a summarizer of large amount of content for a technical team. Summarize the following thoroughly:"
+                    "content": "You are a summarizer of large amount of content for a group of friends. Include names in summaries but only use 'they / them' pronouns when referring to those people. Summarize the following thoroughly:"
                 },
                 {
                     "role": "user",
@@ -42,12 +42,12 @@ pub async fn summarize(text: &str) -> eyre::Result<String> {
             "max_tokens": 4096,
         }))
         .send()
-        .await?
-        .json::<ChatCompletionResponse>()
-        .await?;
-
+        .await;
     dbg!(&response);
-    Ok(response.choices[0].message.content.clone())
+
+    let result = response?.json::<ChatCompletionResponse>().await?;
+
+    Ok(result.choices[0].message.content.clone())
 }
 
 pub fn estimate_token_count(fpath: PathBuf) -> io::Result<usize> {

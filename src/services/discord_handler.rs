@@ -29,6 +29,7 @@ impl Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn message(&self, _: Context, msg: Message) {
+        info!("Message: {:?}", msg);
         if !self.allowed_channels.contains(&msg.channel_id) {
             return;
         }

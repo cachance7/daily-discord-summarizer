@@ -85,7 +85,16 @@ async fn main() -> eyre::Result<()> {
 
     let intents = GatewayIntents::GUILD_MESSAGES | GatewayIntents::MESSAGE_CONTENT;
     let mut discord_client = Client::builder(token, intents)
-        .event_handler(Handler::new(discord_tx, HashSet::default()))
+        .event_handler(Handler::new(
+            discord_tx,
+            HashSet::from_iter(
+                config
+                    .discord
+                    .channel_ids
+                    .iter()
+                    .map(|x| ChannelId::new(x.parse().unwrap())),
+            ),
+        ))
         .await
         .expect("Error creating client");
 
