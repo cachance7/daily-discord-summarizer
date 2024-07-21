@@ -30,14 +30,14 @@ async fn main() -> eyre::Result<()> {
     let token = env::var("DISCORD_BOT_SECRET").expect("No DISCORD_BOT_SECRET provided");
     let config = config::AppConfig::load_from_file("config.toml")?;
     _ = config;
-    let messages_base = config.service.message_log_directory;
+    let messages_base = config.service.message_log_directory.clone();
 
     // Initiate a connection to the database file, creating the file if required.
     let database = sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(4)
         .connect_with(
             sqlx::sqlite::SqliteConnectOptions::new()
-                .filename(config.database.url)
+                .filename(config.database.url.clone())
                 .create_if_missing(true),
         )
         .await
@@ -77,6 +77,7 @@ async fn main() -> eyre::Result<()> {
     let mut daily_recap_srv = DailyRecapService::new(
         shared_db.clone(),
         config.service.produce_digest_interval_seconds,
+        config.clone(),
     );
     tasks.push(task::spawn(async move {
         info!("Running daily digest service");

@@ -1,4 +1,8 @@
-use crate::{db, gpt};
+use crate::{
+    config::AppConfig,
+    db,
+    gpt::{self, SummaryConfig},
+};
 
 use chrono::NaiveDateTime;
 use sqlx::sqlite::SqlitePool;
@@ -9,13 +13,15 @@ use tracing::{error, info};
 pub struct DailyRecapService {
     db: Arc<SqlitePool>,
     interval: Duration,
+    config: AppConfig,
 }
 
 impl DailyRecapService {
-    pub fn new(db: Arc<SqlitePool>, interval_seconds: u64) -> Self {
+    pub fn new(db: Arc<SqlitePool>, interval_seconds: u64, config: AppConfig) -> Self {
         Self {
             db,
             interval: Duration::from_secs(interval_seconds),
+            config,
         }
     }
 
@@ -59,7 +65,17 @@ impl DailyRecapService {
 
             let summaries_content: Vec<String> = summaries.into_iter().map(|s| s.text).collect();
             let summaries_content = summaries_content.join(" ");
-            let digest = match gpt::summarize(&summaries_content).await {
+            let digest = match gpt::summarize(
+                &summaries_content,
+                SummaryConfig {
+                    max_tokens: self.config.summary.max_tokens,
+                    model: self.config.summary.model.to_string(),
+                    prompt: self.config.summary.prompt.to_string(),
+                    ..SummaryConfig::default()
+                },
+            )
+            .await
+            {
                 Ok(txt) => txt,
                 Err(e) => {
                     error!("Could not summarize daily digest: {e}");

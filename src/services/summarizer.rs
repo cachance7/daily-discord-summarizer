@@ -4,6 +4,8 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc::Receiver;
 use tracing::{error, info};
 
+use crate::{config::AppConfig, gpt::SummaryConfig};
+
 pub enum SummarizeRequest {
     FileWithIndex(usize),
 }
@@ -27,6 +29,7 @@ impl SummarizerService {
         }
     }
     pub async fn run(&mut self) {
+        let config = AppConfig::load_from_file("config.toml").unwrap();
         while let Some(data) = self.summarize_rx.recv().await {
             match data {
                 SummarizeRequest::FileWithIndex(log_file_index) => {
@@ -41,7 +44,17 @@ impl SummarizerService {
                             continue;
                         }
                     };
-                    let summary = match crate::gpt::summarize(&file_contents).await {
+                    let summary = match crate::gpt::summarize(
+                        &file_contents,
+                        SummaryConfig {
+                            max_tokens: config.summary.max_tokens,
+                            model: config.summary.model.to_string(),
+                            prompt: config.summary.prompt.to_string(),
+                            ..SummaryConfig::default()
+                        },
+                    )
+                    .await
+                    {
                         Ok(txt) => txt,
                         Err(e) => {
                             error!("Could not summarize message log: {e}");

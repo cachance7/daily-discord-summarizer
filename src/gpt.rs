@@ -21,25 +21,42 @@ pub struct GptMessage {
     content: String,
 }
 
-pub async fn summarize(text: &str) -> eyre::Result<String> {
+#[derive(Deserialize, Debug)]
+pub struct SummaryConfig {
+    pub model: String,
+    pub prompt: String,
+    pub max_tokens: usize,
+}
+
+impl Default for SummaryConfig {
+    fn default() -> Self {
+        Self {
+            model: "gpt-4o-mini".to_string(),
+            prompt: "Summarize:".to_string(),
+            max_tokens: 4096,
+        }
+    }
+}
+
+pub async fn summarize(text: &str, config: SummaryConfig) -> eyre::Result<String> {
     let client = reqwest::Client::new();
     let api_key = env::var("OPEN_AI_SECRET").expect("No OPEN_AI_SECRET provided");
     let response = client
         .post("https://api.openai.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&json!({
-            "model": "gpt-4o-mini",
+            "model": config.model,
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a summarizer of large amount of content for a group of friends. Include names in summaries but only use 'they / them' pronouns when referring to those people. Summarize the following thoroughly:"
+                    "content": config.prompt,
                 },
                 {
                     "role": "user",
                     "content": text,
                 }
             ],
-            "max_tokens": 4096,
+            "max_tokens": config.max_tokens,
         }))
         .send()
         .await;
