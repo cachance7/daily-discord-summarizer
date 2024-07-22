@@ -35,4 +35,5 @@ features = [
     "tokio_task_builder",
     "rustls_backend",
 ]
-version = "0.12"
+git = "https://github.com/serenity-rs/serenity.git"
+branch = "current"

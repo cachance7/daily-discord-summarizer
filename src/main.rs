@@ -96,6 +96,7 @@ async fn main() -> eyre::Result<()> {
                     .map(|x| ChannelId::new(x.parse().unwrap())),
             ),
         ))
+        // .framework(make_framework().await)
         .await
         .expect("Error creating client");
 

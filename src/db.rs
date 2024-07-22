@@ -1,6 +1,6 @@
 use chrono::NaiveDateTime;
+use futures::stream::StreamExt;
 use futures::stream::{self};
-use futures::stream::{Iter, StreamExt};
 use serde::{Deserialize, Serialize};
 use sqlx::{Error, SqlitePool};
 use std::sync::Arc;
@@ -110,20 +110,20 @@ pub async fn insert_daily_digest(
     Ok(())
 }
 
-pub async fn fetch_latest_summaries(
-    pool: Arc<SqlitePool>,
-    count: usize,
-    page: usize,
-) -> Vec<Summary> {
-    let count = count as i64;
-    let offset = count * (page - 1) as i64;
-    sqlx::query_as!(
-        Summary,
-        "SELECT * FROM summaries ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-        count,
-        offset
-    )
-    .fetch_all(&*pool)
-    .await
-    .unwrap_or_else(|_| vec![])
-}
+// pub async fn fetch_latest_summaries(
+//     pool: Arc<SqlitePool>,
+//     count: usize,
+//     page: usize,
+// ) -> Vec<Summary> {
+//     let count = count as i64;
+//     let offset = count * (page - 1) as i64;
+//     sqlx::query_as!(
+//         Summary,
+//         "SELECT * FROM summaries ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+//         count,
+//         offset
+//     )
+//     .fetch_all(&*pool)
+//     .await
+//     .unwrap_or_else(|_| vec![])
+// }
