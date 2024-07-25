@@ -7,7 +7,10 @@ use futures::stream::{self, StreamExt};
 use serenity::builder::*;
 use serenity::model::prelude::*;
 use serenity::prelude::*;
-use tracing::info;
+use tracing::{error, info};
+
+use crate::config::AppConfig;
+use crate::gpt::SummaryConfig;
 
 #[derive(Debug)]
 struct SimpleMessage {
@@ -16,6 +19,7 @@ struct SimpleMessage {
     timestamp: DateTime<Utc>,
 }
 
+#[derive(Debug)]
 enum Timeframe {
     LastDay,
     LastWeek,
@@ -82,10 +86,7 @@ async fn get_recent_messages(
     since: DateTime<Utc>,
 ) -> Result<Vec<SimpleMessage>, serenity::Error> {
     let now = Utc::now();
-    // let one_day_ago: DateTime<Utc> = now - Duration::days(7);
-    // let s_one_day_ago =
-    //     serenity::model::Timestamp::from_unix_timestamp(one_day_ago.timestamp()).unwrap();
-    //
+
     info!("Getting messages from {} to {}", since, now);
 
     let http = Arc::new(ctx.http.clone());
@@ -156,45 +157,97 @@ async fn get_recent_messages(
     Ok(messages)
 }
 
-pub async fn run(ctx: &Context, interaction: &CommandInteraction) -> Result<(), serenity::Error> {
+pub async fn run(
+    ctx: &Context,
+    interaction: &CommandInteraction,
+) -> Result<Option<String>, serenity::Error> {
     let channel_id = interaction.channel_id;
     let options = interaction.data.options();
 
     // Find option named 'since'
     let since = options.iter().find(|opt| opt.name == "since");
 
-    if let Some(since_opt) = since {
-        match since_opt.value {
-            ResolvedValue::Autocomplete { value, .. } => {
-                if let Some(timeframe) = Timeframe::from_str(value) {
-                    let messages = match timeframe {
-                        Timeframe::LastDay => {
-                            let now = Utc::now();
-                            let one_day_ago: DateTime<Utc> = now - Duration::days(1);
-                            get_recent_messages(ctx, channel_id, one_day_ago).await?;
-                        }
-                        Timeframe::LastWeek => {
-                            let now = Utc::now();
-                            let one_week_ago: DateTime<Utc> = now - Duration::weeks(1);
-                            get_recent_messages(ctx, channel_id, one_week_ago).await?;
-                        }
-                        Timeframe::LastMonth => {
-                            let now = Utc::now();
-                            let one_month_ago: DateTime<Utc> = now - Duration::weeks(4);
-                            get_recent_messages(ctx, channel_id, one_month_ago).await?;
-                        }
-                        Timeframe::Custom(date) => {
-                            get_recent_messages(ctx, channel_id, date).await?;
-                        }
-                    };
-                    dbg!(messages);
-                }
-            }
-            _ => {}
-        }
-    }
+    info!("Got since: {:?}", since);
 
-    Ok(())
+    let content = {
+        if let Some(since_opt) = since {
+            info!("Got since value: {:?}", since_opt.value);
+            match since_opt.value {
+                ResolvedValue::String(value) => {
+                    info!("Got since auto value: {:?}", value);
+                    if let Some(timeframe) = Timeframe::from_str(value) {
+                        info!("Got timeframe: {:?}", timeframe);
+                        let messages = match timeframe {
+                            Timeframe::LastDay => {
+                                info!("Getting messages from last day");
+                                let now = Utc::now();
+                                let one_day_ago: DateTime<Utc> = now - Duration::days(1);
+                                get_recent_messages(ctx, channel_id, one_day_ago).await?
+                            }
+                            Timeframe::LastWeek => {
+                                info!("Getting messages from last week");
+                                let now = Utc::now();
+                                let one_week_ago: DateTime<Utc> = now - Duration::weeks(1);
+                                get_recent_messages(ctx, channel_id, one_week_ago).await?
+                            }
+                            Timeframe::LastMonth => {
+                                info!("Getting messages from last month");
+                                let now = Utc::now();
+                                let one_month_ago: DateTime<Utc> = now - Duration::weeks(4);
+                                get_recent_messages(ctx, channel_id, one_month_ago).await?
+                            }
+                            Timeframe::Custom(date) => {
+                                get_recent_messages(ctx, channel_id, date).await?
+                            }
+                        };
+
+                        let config = AppConfig::load_from_file("config.toml").unwrap();
+                        let formatted_messages: Vec<String> = messages
+                            .iter()
+                            .map(|msg| {
+                                format!(
+                                    "{}: {}: {}",
+                                    msg.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                                    msg.username,
+                                    msg.content
+                                )
+                            })
+                            .collect();
+                        let file_contents = formatted_messages.join("\n");
+
+                        match crate::gpt::summarize(
+                            &file_contents,
+                            SummaryConfig {
+                                max_tokens: config.summary.max_tokens,
+                                model: config.summary.model.to_string(),
+                                prompt: config.summary.prompt.to_string(),
+                                ..SummaryConfig::default()
+                            },
+                        )
+                        .await
+                        {
+                            Ok(txt) => Some(txt),
+                            Err(e) => {
+                                error!("Could not summarize message log: {e}");
+                                None
+                            }
+                        }
+                    } else {
+                        info!("Invalid since value");
+                        None
+                    }
+                }
+                _ => None,
+            }
+        } else {
+            info!("No since value");
+            None
+        }
+    };
+    match content {
+        Some(txt) => Ok(Some(txt)),
+        None => Ok(None),
+    }
 }
 
 pub fn register() -> CreateCommand {
@@ -215,7 +268,7 @@ pub async fn autocomplete(
     interaction: &CommandInteraction,
 ) -> Result<(), serenity::Error> {
     let choices = vec![
-        AutocompleteChoice::new("Last day", "last_day"),
+        AutocompleteChoice::new("Yesterday", "last_day"),
         AutocompleteChoice::new("Last week", "last_week"),
         AutocompleteChoice::new("Last month", "last_month"),
     ];

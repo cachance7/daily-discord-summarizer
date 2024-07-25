@@ -3,7 +3,8 @@ use std::collections::HashSet;
 
 use axum::async_trait;
 use serenity::all::{
-    Command, CreateInteractionResponse, CreateInteractionResponseMessage, GuildId, Interaction,
+    Command, CreateInteractionResponse, CreateInteractionResponseFollowup,
+    CreateInteractionResponseMessage, GuildId, Interaction,
 };
 // use serenity::framework::standard::macros::{command, group, help, hook};
 // use serenity::model::id::UserId;
@@ -46,9 +47,9 @@ impl Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        println!("Received interaction: {interaction:#?}");
+        // println!("Received interaction: {interaction:#?}");
         if let Interaction::Autocomplete(command) = interaction {
-            println!("Received autocomplete interaction: {command:#?}");
+            // println!("Received autocomplete interaction: {command:#?}");
 
             match command.data.name.as_str() {
                 "recap" => {
@@ -60,22 +61,28 @@ impl EventHandler for Handler {
                 _ => Some("not implemented :(".to_string()),
             };
         } else if let Interaction::Command(command) = interaction {
-            println!("Received command interaction: {command:#?}");
+            // println!("Received command interaction: {command:#?}");
+            let data = CreateInteractionResponseMessage::new()
+                .content("Processing command...")
+                .ephemeral(true);
+            let builder = CreateInteractionResponse::Message(data);
+            if let Err(why) = command.create_response(&ctx.http, builder).await {
+                println!("Cannot respond to slash command: {why}");
+            }
 
             let content = match command.data.name.as_str() {
-                "recap" => {
-                    crate::services::commands::recap::run(&ctx, &command)
-                        .await
-                        .unwrap();
-                    None
-                }
-                _ => Some("not implemented :(".to_string()),
+                "recap" => crate::services::commands::recap::run(&ctx, &command)
+                    .await
+                    .unwrap(),
+                _ => None,
             };
 
             if let Some(content) = content {
-                let data = CreateInteractionResponseMessage::new().content(content);
-                let builder = CreateInteractionResponse::Message(data);
-                if let Err(why) = command.create_response(&ctx.http, builder).await {
+                let data = CreateInteractionResponseFollowup::new()
+                    .content(content)
+                    .ephemeral(true);
+                // let builder = CreateInteractionResponse::Message(data);
+                if let Err(why) = command.create_followup(&ctx.http, data).await {
                     println!("Cannot respond to slash command: {why}");
                 }
             }
