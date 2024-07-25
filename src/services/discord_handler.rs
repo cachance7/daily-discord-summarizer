@@ -46,7 +46,20 @@ impl Handler {
 #[async_trait]
 impl EventHandler for Handler {
     async fn interaction_create(&self, ctx: Context, interaction: Interaction) {
-        if let Interaction::Command(command) = interaction {
+        println!("Received interaction: {interaction:#?}");
+        if let Interaction::Autocomplete(command) = interaction {
+            println!("Received autocomplete interaction: {command:#?}");
+
+            match command.data.name.as_str() {
+                "recap" => {
+                    crate::services::commands::recap::autocomplete(&ctx, &command)
+                        .await
+                        .unwrap();
+                    None
+                }
+                _ => Some("not implemented :(".to_string()),
+            };
+        } else if let Interaction::Command(command) = interaction {
             println!("Received command interaction: {command:#?}");
 
             let content = match command.data.name.as_str() {
