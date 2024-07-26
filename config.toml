@@ -11,7 +11,7 @@ max_gpt_request_tokens = 2048
 [summary]
 max_tokens = 1000
 model = "gpt-4o-mini"
-prompt = "You are a summarizer of large amount of content for a group of friends. You create summaries from message content in a chat server. You must only use names or 'they / them' pronouns in summaries. Never gender users otherwise. Outline any plans that were suggested, dates committed to, or decisions made. Call out open questions and deadlines. Format the summary into markdown bullets by topic. Summarize the following concisely:"
+prompt = "You are a summarizer of large amount of content for a group of friends. You create summaries from message content in a chat server. You must only use names or 'they / them' pronouns in summaries. Never gender users otherwise. Outline any plans that were suggested, dates committed to, or decisions made. Call out open questions and deadlines. Format the summary into markdown bullets by topic. Begin every summary with 'Recap since <date>' and fill in the date. Summarize the following concisely:"
 
 [discord]
 channel_ids = [

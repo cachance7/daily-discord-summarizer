@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use chrono::{DateTime, Duration, Local, TimeZone, Utc};
+use chrono::{DateTime, Duration, TimeZone, Utc};
 use chrono_english::{parse_date_string, parse_duration, Dialect, Interval};
 use futures::stream::{self, StreamExt};
 use serenity::builder::*;
@@ -161,14 +161,6 @@ pub async fn run(
     ctx: &Context,
     interaction: &CommandInteraction,
 ) -> Result<Option<String>, serenity::Error> {
-    let data = CreateInteractionResponseMessage::new()
-        .content("Processing command...")
-        .ephemeral(true);
-    let builder = CreateInteractionResponse::Message(data);
-    if let Err(why) = interaction.create_response(&ctx.http, builder).await {
-        println!("Cannot respond to slash command: {why}");
-    }
-
     let channel_id = interaction.channel_id;
     let options = interaction.data.options();
 
@@ -177,89 +169,116 @@ pub async fn run(
 
     info!("Got since: {:?}", since);
 
-    let content = {
+    let since_val = {
         if let Some(since_opt) = since {
-            info!("Got since value: {:?}", since_opt.value);
             match since_opt.value {
-                ResolvedValue::String(value) => {
-                    info!("Got since auto value: {:?}", value);
-                    if let Some(timeframe) = Timeframe::from_str(value) {
-                        info!("Got timeframe: {:?}", timeframe);
-                        let messages = match timeframe {
-                            Timeframe::LastDay => {
-                                info!("Getting messages from last day");
-                                let now = Utc::now();
-                                let one_day_ago: DateTime<Utc> = now - Duration::days(1);
-                                get_recent_messages(ctx, channel_id, one_day_ago).await?
-                            }
-                            Timeframe::LastWeek => {
-                                info!("Getting messages from last week");
-                                let now = Utc::now();
-                                let one_week_ago: DateTime<Utc> = now - Duration::weeks(1);
-                                get_recent_messages(ctx, channel_id, one_week_ago).await?
-                            }
-                            Timeframe::LastMonth => {
-                                info!("Getting messages from last month");
-                                let now = Utc::now();
-                                let one_month_ago: DateTime<Utc> = now - Duration::weeks(4);
-                                get_recent_messages(ctx, channel_id, one_month_ago).await?
-                            }
-                            Timeframe::Custom(date) => {
-                                get_recent_messages(ctx, channel_id, date).await?
-                            }
-                        };
-
-                        let config = AppConfig::load_from_file("config.toml").unwrap();
-                        let formatted_messages: Vec<String> = messages
-                            .iter()
-                            .map(|msg| {
-                                format!(
-                                    "{}: {}: {}",
-                                    msg.timestamp.format("%Y-%m-%d %H:%M:%S"),
-                                    msg.username,
-                                    msg.content
-                                )
-                            })
-                            .collect();
-                        let file_contents = formatted_messages.join("\n");
-
-                        match crate::gpt::summarize(
-                            &file_contents,
-                            SummaryConfig {
-                                max_tokens: config.summary.max_tokens,
-                                model: config.summary.model.to_string(),
-                                prompt: config.summary.prompt.to_string(),
-                                ..SummaryConfig::default()
-                            },
-                        )
-                        .await
-                        {
-                            Ok(txt) => Some(txt),
-                            Err(e) => {
-                                error!("Could not summarize message log: {e}");
-                                None
-                            }
-                        }
-                    } else {
-                        info!("Invalid since value");
-                        None
-                    }
-                }
+                ResolvedValue::String(val) => Some(val),
                 _ => None,
             }
         } else {
-            info!("No since value");
+            None
+        }
+    };
+
+    let value = since_val.unwrap_or("last_week");
+
+    info!("Got since auto value: {:?}", value);
+    let content = {
+        if let Some(timeframe) = Timeframe::from_str(value) {
+            info!("Got timeframe: {:?}", timeframe);
+            let messages = match timeframe {
+                Timeframe::LastDay => {
+                    info!("Getting messages from last day");
+                    let data = CreateInteractionResponseMessage::new()
+                        .content("Processing recap for the past day, this might take a few seconds...")
+                        .ephemeral(true);
+                    let builder = CreateInteractionResponse::Message(data);
+                    if let Err(why) = interaction.create_response(&ctx.http, builder).await {
+                        println!("Cannot respond to slash command: {why}");
+                    }
+
+                    let now = Utc::now();
+                    let one_day_ago: DateTime<Utc> = now - Duration::days(1);
+                    get_recent_messages(ctx, channel_id, one_day_ago).await?
+                }
+                Timeframe::LastWeek => {
+                    info!("Getting messages from last week");
+                    let data = CreateInteractionResponseMessage::new()
+                        .content("Processing recap for the past week, this might take a few seconds...")
+                        .ephemeral(true);
+                    let builder = CreateInteractionResponse::Message(data);
+                    if let Err(why) = interaction.create_response(&ctx.http, builder).await {
+                        println!("Cannot respond to slash command: {why}");
+                    }
+
+                    let now = Utc::now();
+                    let one_week_ago: DateTime<Utc> = now - Duration::weeks(1);
+                    get_recent_messages(ctx, channel_id, one_week_ago).await?
+                }
+                Timeframe::LastMonth => {
+                    info!("Getting messages from last month");
+                    let data = CreateInteractionResponseMessage::new()
+                        .content("Processing recap for the past month, this might take a few seconds...")
+                        .ephemeral(true);
+                    let builder = CreateInteractionResponse::Message(data);
+                    if let Err(why) = interaction.create_response(&ctx.http, builder).await {
+                        println!("Cannot respond to slash command: {why}");
+                    }
+
+                    let now = Utc::now();
+                    let one_month_ago: DateTime<Utc> = now - Duration::weeks(4);
+                    get_recent_messages(ctx, channel_id, one_month_ago).await?
+                }
+                Timeframe::Custom(date) => get_recent_messages(ctx, channel_id, date).await?,
+            };
+
+            let config = AppConfig::load_from_file("config.toml").unwrap();
+            let formatted_messages: Vec<String> = messages
+                .iter()
+                .map(|msg| {
+                    format!(
+                        "{}: {}: {}",
+                        msg.timestamp.format("%Y-%m-%d %H:%M:%S"),
+                        msg.username,
+                        msg.content
+                    )
+                })
+                .collect();
+            let file_contents = formatted_messages.join("\n");
+
+            match crate::gpt::summarize(
+                &file_contents,
+                SummaryConfig {
+                    max_tokens: config.summary.max_tokens,
+                    model: config.summary.model.to_string(),
+                    prompt: config.summary.prompt.to_string(),
+                    ..SummaryConfig::default()
+                },
+            )
+            .await
+            {
+                Ok(txt) => Some(txt),
+                Err(e) => {
+                    error!("Could not summarize message log: {e}");
+                    None
+                }
+            }
+        } else {
+            info!("Invalid since value");
             None
         }
     };
 
     if let Some(content) = content {
         let mut btn_id = "recap-".to_owned();
+
+        let mut message_content = content.clone();
+        message_content.push_str("\n\n*(Note: AI is dumb. If this message uses the wrong pronouns or produces bad vibes let @casey know and he will __correct__ the bot)*");
         btn_id.push_str(interaction.data.id.to_string().as_str());
         let button = CreateButton::new(btn_id).label("Publish");
         let components = CreateActionRow::Buttons(vec![button]);
         let data = CreateInteractionResponseFollowup::new()
-            .content(content)
+            .content(message_content)
             .components(vec![components])
             .ephemeral(true);
 
