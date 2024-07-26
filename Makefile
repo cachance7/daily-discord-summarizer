@@ -4,7 +4,7 @@ PROJECT_NAME := daily-discord-summarizer
 EXECUTABLE_NAME := catchup-bot
 INSTALL_PATH := /usr/local/bin
 CONFIG_FILE := config.toml
-CONFIG_INSTALL_PATH := /etc/$(EXECUTABLE_NAME)/$(CONFIG_FILE)
+CONFIG_INSTALL_PATH := /etc/$(EXECUTABLE_NAME)
 
 # Default target
 all: build
