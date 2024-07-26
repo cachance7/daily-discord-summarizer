@@ -32,6 +32,8 @@ async fn main() -> eyre::Result<()> {
     _ = config;
     let messages_base = config.service.message_log_directory.clone();
 
+    dbg!(&config);
+
     // Initiate a connection to the database file, creating the file if required.
     let database = sqlx::sqlite::SqlitePoolOptions::new()
         .max_connections(4)

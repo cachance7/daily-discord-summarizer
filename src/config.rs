@@ -2,7 +2,7 @@ use config::{Config, ConfigError};
 use serde::Deserialize;
 use std::path::PathBuf;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct AppConfig {
     pub database: DatabaseConfig,
     pub service: ServiceConfig,
@@ -11,12 +11,12 @@ pub struct AppConfig {
     pub summary: SummaryConfig,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct DatabaseConfig {
     pub url: String,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct ServiceConfig {
     pub produce_digest_interval_seconds: u64,
     pub message_log_directory: PathBuf,
@@ -25,13 +25,13 @@ pub struct ServiceConfig {
     pub max_gpt_request_tokens: usize,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct DiscordConfig {
     #[allow(unused)]
     pub channel_ids: Vec<String>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct SummaryConfig {
     pub model: String,
     pub prompt: String,
