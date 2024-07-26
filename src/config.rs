@@ -39,6 +39,10 @@ pub struct SummaryConfig {
 }
 
 impl AppConfig {
+    pub fn load() -> Result<Self, ConfigError> {
+        let file_path = std::env::var("CONFIG_FILE").unwrap_or_else(|_| "config.toml".to_string());
+        Self::load_from_file(&file_path)
+    }
     pub fn load_from_file(file_path: &str) -> Result<Self, ConfigError> {
         let config = Config::builder()
             .add_source(config::File::with_name(file_path))

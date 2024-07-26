@@ -28,7 +28,7 @@ async fn main() -> eyre::Result<()> {
     tracing_subscriber::fmt::init();
 
     let token = env::var("DISCORD_BOT_SECRET").expect("No DISCORD_BOT_SECRET provided");
-    let config = config::AppConfig::load_from_file("config.toml")?;
+    let config = config::AppConfig::load()?;
     _ = config;
     let messages_base = config.service.message_log_directory.clone();
 

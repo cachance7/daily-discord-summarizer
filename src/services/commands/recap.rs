@@ -190,7 +190,9 @@ pub async fn run(
                 Timeframe::LastDay => {
                     info!("Getting messages from last day");
                     let data = CreateInteractionResponseMessage::new()
-                        .content("Processing recap for the past day, this might take a few seconds...")
+                        .content(
+                            "Processing recap for the past day, this might take a few seconds...",
+                        )
                         .ephemeral(true);
                     let builder = CreateInteractionResponse::Message(data);
                     if let Err(why) = interaction.create_response(&ctx.http, builder).await {
@@ -204,7 +206,9 @@ pub async fn run(
                 Timeframe::LastWeek => {
                     info!("Getting messages from last week");
                     let data = CreateInteractionResponseMessage::new()
-                        .content("Processing recap for the past week, this might take a few seconds...")
+                        .content(
+                            "Processing recap for the past week, this might take a few seconds...",
+                        )
                         .ephemeral(true);
                     let builder = CreateInteractionResponse::Message(data);
                     if let Err(why) = interaction.create_response(&ctx.http, builder).await {
@@ -218,7 +222,9 @@ pub async fn run(
                 Timeframe::LastMonth => {
                     info!("Getting messages from last month");
                     let data = CreateInteractionResponseMessage::new()
-                        .content("Processing recap for the past month, this might take a few seconds...")
+                        .content(
+                            "Processing recap for the past month, this might take a few seconds...",
+                        )
                         .ephemeral(true);
                     let builder = CreateInteractionResponse::Message(data);
                     if let Err(why) = interaction.create_response(&ctx.http, builder).await {
@@ -232,7 +238,7 @@ pub async fn run(
                 Timeframe::Custom(date) => get_recent_messages(ctx, channel_id, date).await?,
             };
 
-            let config = AppConfig::load_from_file("config.toml").unwrap();
+            let config = AppConfig::load().unwrap();
             let formatted_messages: Vec<String> = messages
                 .iter()
                 .map(|msg| {

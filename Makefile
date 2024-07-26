@@ -3,6 +3,8 @@ CARGO := cargo
 PROJECT_NAME := daily-discord-summarizer
 EXECUTABLE_NAME := catchup-bot
 INSTALL_PATH := /usr/local/bin
+CONFIG_FILE := config.toml
+CONFIG_INSTALL_PATH := /etc/$(EXECUTABLE_NAME)/$(CONFIG_FILE)
 
 # Default target
 all: build
@@ -27,9 +29,10 @@ clean:
 release:
 	$(CARGO) build --release
 
-# Install the binary with a different name
+# Install the binary and config file
 install: release
 	install -Dm755 target/release/$(PROJECT_NAME) $(INSTALL_PATH)/$(EXECUTABLE_NAME)
+	install -Dm644 $(CONFIG_FILE) $(CONFIG_INSTALL_PATH)/$(CONFIG_FILE)
 
 # Format the code
 format:
@@ -53,7 +56,7 @@ help:
 	@echo "  test      - Test the project"
 	@echo "  clean     - Clean the project"
 	@echo "  release   - Build the project in release mode"
-	@echo "  install   - Install the binary as $(EXECUTABLE_NAME) to $(INSTALL_PATH)"
+	@echo "  install   - Install the binary as $(EXECUTABLE_NAME) to $(INSTALL_PATH) and config file to $(CONFIG_INSTALL_PATH)"
 	@echo "  format    - Format the code"
 	@echo "  lint      - Lint the code"
 	@echo "  help      - Display this help message"

@@ -29,7 +29,7 @@ impl SummarizerService {
         }
     }
     pub async fn run(&mut self) {
-        let config = AppConfig::load_from_file("config.toml").unwrap();
+        let config = AppConfig::load().unwrap();
         while let Some(data) = self.summarize_rx.recv().await {
             match data {
                 SummarizeRequest::FileWithIndex(log_file_index) => {
