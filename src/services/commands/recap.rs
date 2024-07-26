@@ -161,6 +161,14 @@ pub async fn run(
     ctx: &Context,
     interaction: &CommandInteraction,
 ) -> Result<Option<String>, serenity::Error> {
+    let data = CreateInteractionResponseMessage::new()
+        .content("Processing command...")
+        .ephemeral(true);
+    let builder = CreateInteractionResponse::Message(data);
+    if let Err(why) = interaction.create_response(&ctx.http, builder).await {
+        println!("Cannot respond to slash command: {why}");
+    }
+
     let channel_id = interaction.channel_id;
     let options = interaction.data.options();
 
@@ -244,9 +252,25 @@ pub async fn run(
             None
         }
     };
-    match content {
-        Some(txt) => Ok(Some(txt)),
-        None => Ok(None),
+
+    if let Some(content) = content {
+        let mut btn_id = "recap-".to_owned();
+        btn_id.push_str(interaction.data.id.to_string().as_str());
+        let button = CreateButton::new(btn_id).label("Publish");
+        let components = CreateActionRow::Buttons(vec![button]);
+        let data = CreateInteractionResponseFollowup::new()
+            .content(content)
+            .components(vec![components])
+            .ephemeral(true);
+
+        if let Err(why) = interaction.create_followup(&ctx.http, data).await {
+            println!("Cannot respond to slash command: {why}");
+            Ok(None)
+        } else {
+            Ok(Some("Command processed".to_string()))
+        }
+    } else {
+        Ok(Some("Command not processed".to_string()))
     }
 }
 
@@ -261,6 +285,24 @@ pub fn register() -> CreateCommand {
             )
             .set_autocomplete(true),
         )
+}
+
+pub async fn publish(ctx: &Context, interaction: &Interaction) -> Result<(), serenity::Error> {
+    if let Some(component) = interaction.clone().message_component() {
+        let content = component.message.content.clone();
+        let message = CreateInteractionResponseMessage::new().content(content);
+        let data = CreateInteractionResponse::Message(message);
+        match component.create_response(&ctx.http, data).await {
+            Ok(message) => Ok(message),
+            Err(e) => {
+                eprintln!("Failed to create follow-up: {:?}", e);
+                Err(e.into())
+            }
+        }
+    } else {
+        eprintln!("Interaction is not a message component");
+        Err(serenity::Error::Other("Interaction is not a message component").into())
+    }
 }
 
 pub async fn autocomplete(
